@@ -1,4 +1,3 @@
-import cv2
 import serial
 import tesserocr
 from PIL import Image
