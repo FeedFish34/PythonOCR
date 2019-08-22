@@ -1,5 +1,5 @@
 import serial
-import tesserocr
+import pytesseract
 from PIL import Image
 import re
 import logging
@@ -10,6 +10,7 @@ fp = logging.FileHandler('Debug.txt', encoding='utf-8')
 fs = logging.StreamHandler()
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT, handlers=[fp, fs])
 text = ""
+List = []
 
 # #调用笔记本内置摄像头，所以参数为0，如果有其他的摄像头可以调整参数为1，2
 # cap=cv2.VideoCapture(0)
@@ -37,7 +38,7 @@ text = ""
 #
 # cap.release()
 
-text = tesserocr.image_to_text(Image.open('D:/image2.jpg'), lang='chi_sim')
+text = pytesseract.image_to_string(Image.open('D:/image2.jpg'), lang='chi_sim')
 text = re.sub("\D", "", text)
 print(text)
 
@@ -64,12 +65,23 @@ if __name__ == '__main__':
         EtxString = chr(int("03"))
         EotString = chr(int("04"))
         if (text != ""):
-            text = EnqString + StxString + text + EtxString + EotString
-            logging.debug("发送：" + text)
-            serial.write(bytearray(text, encoding="utf-8"))  # 数据写回
+            List.append(EnqString)
+            List.append(StxString + text + EtxString)
+            List.append(EotString)
+            logging.debug("发送：" + List[0])
+            serial.write(bytes(List[0].encode('utf-8')))  # 数据写回
+            List.pop(0)
             text = ""
         data = recv(serial)
         if data != b'':
             print("receive : ", data)
+            for s in data:
+                if (s == 6 and len(List) > 0):
+                    logging.debug("发送2：" + List[0])
+                    serial.write(bytes(List[0].encode('utf-8')))  # 数据写回
+                    List.pop(0)
+                elif (s == 5 or s == 2 or s == 3):
+                    logging.debug("发送3：" + chr(int("06")))
+                    serial.write(bytearray(chr(int("06")), encoding="utf-8"))  # 数据写回
             logging.debug("接收：" + data.decode('utf-8'))
 
